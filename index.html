@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Roleta - Viptech</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(circle, #ffffff 0%, #00d2ff 100%);
+            font-family: 'Segoe UI', Roboto, Helrgb(255, 255, 255) Arial, sans-serif;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        .header-logo {
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .header-logo p {
+            margin-top: -45px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #94a3b8;
+            letter-spacing: 1px;
+        }
+
+        .roulette-container {
+            position: relative;
+            width: 360px;
+            height: 360px;
+        }
+
+        /* Marcador Superior Moderno (Indicador Neon) */
+        .pointer {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 18px solid transparent;
+            border-right: 18px solid transparent;
+            border-top: 35px solid #00d2ff;
+            z-index: 10;
+            filter: drop-shadow(0px 0px 8px #00d2ff);
+        }
+
+        /* O disco da roleta */
+        .wheel {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 6px solid #1e293b;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.2), inset 0 0 20px rgba(0, 0, 0, 0.6);
+            touch-action: none;
+            cursor: grab;
+            overflow: hidden;
+        }
+
+        .wheel:active {
+            cursor: grabbing;
+        }
+
+        /* Centro da Roleta (Badge Viptech) */
+        .center-hub {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: #0f172a;
+            border: 4px solid #00d2ff;
+            border-radius: 50%;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 210, 255, 0.3);
+            pointer-events: none;
+        }
+
+        .center-hub span {
+            font-size: 11px;
+            font-weight: 900;
+            color: #00d2ff;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Rótulos dos valores dentro da roleta */
+        .wheel-label {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform-origin: 0 0;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.9), 0px 0px 2px rgba(0, 0, 0, 1);
+            white-space: nowrap;
+            width: 140px;
+            text-align: right;
+            padding-right: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header-logo">
+        <img src="https://www.viptech.com.br/img/logo_menu_viptech.png">
+        <p>Gire com o dedo para sortear</p>
+    </div>
+
+    <div class="roulette-container">
+        <div class="pointer"></div>
+        <div class="center-hub"><span style="
+        
+          font-family: Orbitron, sans-serif;
+                    letter-spacing: 2px;
+                    text-transform: uppercase;
+                    background: linear-gradient(90deg, #ffffff 0%, #00d2ff 100%);
+                    background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    animation:  fadeIn 0.5s ease-in-out; ">VIPTECH</span></div>
+        <div class=" wheel" id="wheel">
+        </div>
+    </div>
+
+    <script>
+        const valoresRoleta = [
+            "Prado",
+            "O mais Honrrado",
+        ];
+
+        const wheel = document.getElementById('wheel');
+
+        let isDragging = false;
+        let startAngle = 0;
+        let currentRotation = 0;
+        let lastAngle = 0;
+        let velocity = 0;
+        let lastTime = Date.now();
+        let animationFrameId = null;
+
+        // Função para gerar cores aleatórias equilibradas (HSL mantém o brilho tech)
+        function generateRandomColors(total) {
+            const colors = [];
+            for (let i = 0; i < total; i++) {
+                // Sorteia matizes diferentes espalhadas pelo círculo cromático
+                const hue = Math.floor((360 / total) * i + (Math.random() * 15));
+                colors.push(`hsl(${hue}, 75%, 45%)`);
+            }
+            return colors;
+        }
+
+        // Monta a roleta dinamicamente baseado nos valores inseridos
+        function setupWheel() {
+            const totalSlices = valoresRoleta.length;
+            const sliceAngle = 360 / totalSlices;
+            const colors = generateRandomColors(totalSlices);
+
+            // 1. Cria o gradiente cônico de fundo
+            let gradientString = "conic-gradient(";
+            colors.forEach((color, index) => {
+                const startDeg = index * sliceAngle;
+                const endDeg = (index + 1) * sliceAngle;
+                gradientString += `${color} ${startDeg}deg ${endDeg}deg`;
+                if (index < totalSlices - 1) gradientString += ", ";
+            });
+            gradientString += ")";
+            wheel.style.background = gradientString;
+
+            // 2. Insere os textos centralizados em cada fatia
+            wheel.innerHTML = ""; // Limpa conteúdo antigo
+            valoresRoleta.forEach((texto, index) => {
+                const labelAngle = (index * sliceAngle) + (sliceAngle / 2);
+                const labelEl = document.createElement('div');
+                labelEl.className = 'wheel-label';
+                labelEl.innerText = texto;
+
+                // Ajuste matemático para alinhar o texto apontando para fora a partir do centro
+                labelEl.style.transform = `rotate(${labelAngle - 90}deg) translateY(-15px) translateX(20px)`;
+
+                wheel.appendChild(labelEl);
+            });
+        }
+
+        // Retorna o ângulo do toque em relação ao eixo central
+        function getAngle(clientX, clientY) {
+            const rect = wheel.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            return Math.atan2(clientY - centerY, clientX - centerX) * (180 / Math.PI);
+        }
+
+        // Evento: Pressionar dedo/mouse
+        wheel.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            velocity = 0;
+            cancelAnimationFrame(animationFrameId);
+
+            const angle = getAngle(e.clientX, e.clientY);
+            startAngle = angle - currentRotation;
+            lastAngle = angle;
+            lastTime = Date.now();
+
+            wheel.setPointerCapture(e.pointerId);
+        });
+
+        // Evento: Arrastar o dedo
+        wheel.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+
+            const angle = getAngle(e.clientX, e.clientY);
+            const now = Date.now();
+            const dt = now - lastTime;
+
+            if (dt > 0) {
+                let deltaAngle = angle - lastAngle;
+
+                // Correção de quebra de quadrante (transição 180° para -180°)
+                if (deltaAngle > 180) deltaAngle -= 360;
+                if (deltaAngle < -180) deltaAngle += 360;
+
+                velocity = deltaAngle / dt;
+            }
+
+            currentRotation = angle - startAngle;
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+
+            lastAngle = angle;
+            lastTime = now;
+        });
+
+        // Evento: Soltar o dedo (Gera a inércia/giro contínuo)
+        wheel.addEventListener('pointerup', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            wheel.releasePointerCapture(e.pointerId);
+
+            if (Date.now() - lastTime > 100) {
+                velocity = 0; // Se parou o dedo antes de soltar, não gira por inércia
+            }
+
+            applyInertia();
+        });
+
+        wheel.addEventListener('pointercancel', () => {
+            isDragging = false;
+        });
+
+        // Loop de animação física para redução gradual da velocidade (atrito)
+        function applyInertia() {
+            if (Math.abs(velocity) < 0.002) {
+                velocity = 0;
+                return;
+            }
+
+            currentRotation += velocity * 16;
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+
+            // Coeficiente de redução (0.97 faz ela parar de forma suave e realista)
+            velocity *= 0.97;
+
+            animationFrameId = requestAnimationFrame(applyInertia);
+        }
+
+        // Inicializa a roleta ao carregar a página
+        setupWheel();
+    </script>
+</body>
+
+</html>
