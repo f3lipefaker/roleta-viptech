@@ -45,11 +45,11 @@
             letter-spacing: 1px;
         }
 
-        /* Container da Roleta Bem Maior */
+        /* Container da Roleta */
         .roulette-container {
             position: relative;
-            width: 90vw; /* 90% da largura da tela */
-            max-width: 500px; /* Tamanho máximo em telas grandes */
+            width: 90vw;
+            max-width: 500px;
             height: 90vw;
             max-height: 500px;
             margin-bottom: 20px;
@@ -70,7 +70,6 @@
             filter: drop-shadow(0px 6px 4px rgba(0,0,0,0.4));
         }
         
-        /* Brilho interno do marcador */
         .pointer::after {
             content: '';
             position: absolute;
@@ -93,6 +92,7 @@
             cursor: grab;
             overflow: hidden;
             background: #fff;
+            /* Removemos a transição CSS pois o JS faz a animação frame a frame, melhorando a performance */
         }
 
         .wheel:active {
@@ -130,13 +130,13 @@
             animation: fadeIn 0.5s ease-in-out;
         }
 
-        /* Rótulos reposicionados para roleta grande */
+        /* Rótulos */
         .wheel-label {
             position: absolute;
             left: 50%;
             top: 50%;
             transform-origin: 0 center;
-            width: 46%; /* Ocupa quase o raio todo */
+            width: 46%; 
             text-align: right;
             padding-right: 25px;
             font-size: 20px;
@@ -144,7 +144,7 @@
             color: #fff;
             text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.9), 0px 0px 3px rgba(0, 0, 0, 1);
             white-space: nowrap;
-            margin-top: -12px; /* Metade do tamanho da fonte para centralizar verticalmente */
+            margin-top: -12px; 
         }
 
         /* ================= MODAL DE COMEMORAÇÃO ================= */
@@ -247,11 +247,13 @@
     </div>
 
     <script>
-        // ADICIONE SEUS VALORES AQUI (Adicionei mais alguns para a roleta grande ficar mais bonita)
         const valoresRoleta = [
             "Prado",
             "O mais Honrado",
             "Desconto 100%",
+            "Brinde Exclusivo",
+            "Instalação Grátis",
+            "Mensalidade VIP"
         ];
 
         const wheel = document.getElementById('wheel');
@@ -266,59 +268,12 @@
         let velocity = 0;
         let lastTime = Date.now();
         let animationFrameId = null;
-        let maxVelocityDuringSpin = 0; // Para saber se o usuário girou de verdade
-
-        // --- SISTEMA DE SOM DE CATRACA (API Nativa do Navegador) ---
-        let audioCtx;
-        let lastTickIndex = 0;
+        let maxVelocityDuringSpin = 0; 
+        
         const sliceAngle = 360 / valoresRoleta.length;
-
-        function initAudio() {
-            if (!audioCtx) {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-        }
-
-        // Sintetiza um som de "tique" de roleta (dispensa arquivos mp3 extras)
-        function playTick() {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            // Frequência rápida para simular catraca de plástico
-            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.05);
-            
-            // Volume do som
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-            
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.05);
-        }
-
-        // Verifica se a roleta passou por uma nova linha divisória para tocar o tique
-        function checkTickSound() {
-            // Calcula o grau atual realístico (0 a 360) e descobre a fatia no topo
-            let normalizedRotation = ((currentRotation % 360) + 360) % 360;
-            let pointerAngle = (360 - normalizedRotation) % 360;
-            let currentTickIndex = Math.floor(pointerAngle / sliceAngle);
-
-            if (currentTickIndex !== lastTickIndex) {
-                playTick();
-                lastTickIndex = currentTickIndex;
-            }
-        }
 
         // --- LÓGICA DO GANHADOR ---
         function checkWinner() {
-            // Só declara ganhador se tiver girado com alguma força (evita clique acidental)
             if (maxVelocityDuringSpin > 0.5) {
                 let normalizedRotation = ((currentRotation % 360) + 360) % 360;
                 let pointerAngle = (360 - normalizedRotation) % 360;
@@ -327,14 +282,13 @@
                 
                 mostrarComemoracao(premio);
             }
-            maxVelocityDuringSpin = 0; // Reseta para o próximo giro
+            maxVelocityDuringSpin = 0; 
         }
 
         function mostrarComemoracao(premio) {
             prizeText.innerText = premio;
             winModal.classList.add('active');
             
-            // Toca o som de aplausos
             winAudio.currentTime = 0;
             winAudio.volume = 0.6;
             winAudio.play().catch(e => console.log("Áudio bloqueado pelo navegador"));
@@ -370,13 +324,10 @@
 
             wheel.innerHTML = "";
             valoresRoleta.forEach((texto, index) => {
-                // Cálculo para o texto ficar apontando perfeitamente para fora
                 const labelAngle = (index * sliceAngle) + (sliceAngle / 2);
                 const labelEl = document.createElement('div');
                 labelEl.className = 'wheel-label';
                 labelEl.innerText = texto;
-                
-                // Rotaciona a partir do centro
                 labelEl.style.transform = `rotate(${labelAngle - 90}deg)`;
                 wheel.appendChild(labelEl);
             });
@@ -391,7 +342,6 @@
         }
 
         wheel.addEventListener('pointerdown', (e) => {
-            initAudio(); // Inicia o motor de som no primeiro toque do usuário
             isDragging = true;
             velocity = 0;
             maxVelocityDuringSpin = 0;
@@ -426,7 +376,6 @@
 
             currentRotation = angle - startAngle;
             wheel.style.transform = `rotate(${currentRotation}deg)`;
-            checkTickSound(); // Toca catraca ao arrastar
 
             lastAngle = angle;
             lastTime = now;
@@ -439,9 +388,11 @@
 
             if (Date.now() - lastTime > 100) {
                 velocity = 0; 
-                checkWinner(); // Se o usuário parou o dedo antes de soltar
+                checkWinner(); 
             } else {
-                applyInertia(); // Começa a girar solto
+                // MULTIPLICADOR DE SENSIBILIDADE: Aumenta a força final do dedo em 2.5x
+                velocity *= 2.5; 
+                applyInertia(); 
             }
         });
 
@@ -450,18 +401,20 @@
         });
 
         function applyInertia() {
+            // Condição de parada (quando a roleta fica bem devagar, ela trava e anuncia o ganhador)
             if (Math.abs(velocity) < 0.002) {
                 velocity = 0;
-                checkWinner(); // Roleta parou totalmente! Chama a comemoração
+                checkWinner(); 
                 return;
             }
 
-            currentRotation += velocity * 16; 
+            // MULTIPLICADOR DE VELOCIDADE: Faz ela girar visualmente muito mais rápido
+            currentRotation += velocity * 25; 
             wheel.style.transform = `rotate(${currentRotation}deg)`;
             
-            checkTickSound(); // Toca catraca rodando solta
-
-            velocity *= 0.98; // O atrito - quanto mais perto de 1, mais tempo ela roda
+            // ATRITO: Reduzido para 0.985 (ela gira mais solta e por mais tempo)
+            velocity *= 0.985; 
+            
             animationFrameId = requestAnimationFrame(applyInertia);
         }
 
